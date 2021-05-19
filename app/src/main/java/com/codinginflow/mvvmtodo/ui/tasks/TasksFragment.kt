@@ -11,8 +11,10 @@ import android.view.View
 import androidx.appcompat.widget.SearchView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -20,6 +22,7 @@ import com.codinginflow.mvvmtodo.R
 import com.codinginflow.mvvmtodo.data.SortOrder
 import com.codinginflow.mvvmtodo.data.Task
 import com.codinginflow.mvvmtodo.databinding.FragmentTasksBinding
+import com.codinginflow.mvvmtodo.util.exhaustive
 import com.codinginflow.mvvmtodo.util.onQueryTextChanged
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
@@ -128,9 +131,19 @@ class TasksFragment : Fragment(R.layout.fragment_tasks), TasksAdapter.onItemClic
                     0.7f
 
             }).attachToRecyclerView(recyclerViewTasks)
+
+
+            fabAddTask.setOnClickListener {
+                viewModel.onAddNewTaskClick()
+            }
         }
 
 
+        setFragmentResultListener("add_edit_request"){
+            _, bundle ->
+            val result = bundle.getInt("add_edit_result")
+            viewModel.onAddEditResult(result)
+        }
 
         viewModel.tasks.observe(viewLifecycleOwner) {
             taskAdapter.submitList(it)
@@ -148,7 +161,19 @@ class TasksFragment : Fragment(R.layout.fragment_tasks), TasksAdapter.onItemClic
                                 viewModel.onUndoDeleteClick(event.task)
                             }.show()
                     }
+                    is TasksViewModel.TasksEvent.NavigateToEditTaskScreen -> {
+                    val action = TasksFragmentDirections.actionTasksFragmentToAddEditTaskFragment(event.task, "编辑事项")
+                    findNavController().navigate(action)
                 }
+                    is TasksViewModel.TasksEvent.NavigateToAddTaskScreen -> {
+                    val action = TasksFragmentDirections.actionTasksFragmentToAddEditTaskFragment(null, "添加新事项")
+                    findNavController().navigate(action)
+                }
+
+                    is TasksViewModel.TasksEvent.ShowTaskSavedConfirmationMessage -> {
+                        Snackbar.make(requireView(), event.msg, Snackbar.LENGTH_SHORT).show()
+                    }
+            }.exhaustive
             }
         }
 
